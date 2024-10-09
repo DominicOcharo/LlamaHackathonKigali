@@ -135,9 +135,14 @@
 
                 <!-- Voice Interaction Input Options -->
                 <div id="voiceInputOptions" class="mb-3" style="display:none;">
-                    <h2 class="text-dark mb-3 display-6">Upload Voice File:</h2>
-                    <input type="file" id="voiceFile" accept="audio/*" class="form-control">
+                    <h2 class="text-dark mb-3 display-6">Record Voice:</h2>
+                    <button id="recordButton" class="btn btn-secondary">Start Recording</button>
+                    <button id="stopButton" class="btn btn-danger" style="display:none;">Stop Recording</button>
+                    <p id="recordingStatus" class="text-muted mt-2">Not Recording</p>
+                    <audio id="audioPlayback" controls style="display:none;"></audio>
+                    <input type="file" id="voiceFile" accept="audio/*" class="form-control" style="display:none;">
                 </div>
+
 
                 <button type="submit" class="btn btn-primary w-100">Send</button>
             </form>
@@ -163,13 +168,63 @@
             const interactionResponseElement = document.getElementById('interactionResponse');
             const interactionForm = document.getElementById('interactionForm');
             const languageElement = document.getElementById('language');
+            const recordButton = document.getElementById('recordButton');
+            const stopButton = document.getElementById('stopButton');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const audioPlayback = document.getElementById('audioPlayback');
 
+            let mediaRecorder;
+            let audioChunks = [];
+
+            // Handle interaction type change
             interactionTypeElement.addEventListener('change', function () {
                 const selectedType = interactionTypeElement.value;
                 textInputElement.style.display = selectedType === 'text' ? 'block' : 'none';
-                voiceInputOptionsElement.style.display = selectedType !== 'text' ? 'block' : 'none';
+                voiceInputOptionsElement.style.display = selectedType === 'text' ? 'none' : 'block';
+                audioPlayback.style.display = 'none';
             });
 
+            // Start recording when the record button is clicked
+            recordButton.addEventListener('click', async function () {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    audioChunks = [];
+
+                    mediaRecorder.addEventListener('dataavailable', function(event) {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', function() {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        audioPlayback.src = audioUrl;
+                        audioPlayback.style.display = 'block';
+                        audioPlayback.controls = true;
+
+                        // Store the audio blob to submit later
+                        voiceFileElement.files = createFileList(audioBlob);
+                    });
+
+                    recordButton.style.display = 'none';
+                    stopButton.style.display = 'inline-block';
+                    recordingStatus.innerText = 'Recording...';
+
+                } catch (error) {
+                    recordingStatus.innerText = `Error accessing microphone: ${error.message}`;
+                }
+            });
+
+            // Stop recording when the stop button is clicked
+            stopButton.addEventListener('click', function () {
+                mediaRecorder.stop();
+                stopButton.style.display = 'none';
+                recordButton.style.display = 'inline-block';
+                recordingStatus.innerText = 'Recording stopped. You can play or submit the recording.';
+            });
+
+            // Handle form submission
             interactionForm.addEventListener('submit', async function (event) {
                 event.preventDefault();
                 const language = languageElement.value;
@@ -207,6 +262,15 @@
                     }
                 }
             });
+
+            // Helper function to create a FileList from a Blob
+            function createFileList(blob) {
+                const file = new File([blob], "recording.wav", { type: 'audio/wav', lastModified: new Date() });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                return dataTransfer.files;
+            }
         </script>
+
     </body>
 </html>
