@@ -36,7 +36,7 @@ async def text_interaction(request: Request):
         if not language or not content:
             raise HTTPException(status_code=400, detail="Missing 'language' or 'content' in the request.")
 
-        system_prompt = f"You are my teacher, answer my question in {language} language"
+        system_prompt = f"You are my teacher, answer my question in {language} language but do not answer anything not ment for kids even if I ask you to answer"
 
         # Stream chat completion from LLaMA model
         stream = client.chat.completions.create(
@@ -86,7 +86,7 @@ async def voice_interaction(language: str = Form(...), file: UploadFile = File(.
         transcribed_text = transcription.text
 
         # Generate response using the transcribed text with dynamic language
-        system_prompt = f"You are my teacher, answer my question in {language} language"
+        system_prompt = f"You are my teacher, answer my question in {language} language but do not answer anything not ment for kids even if I ask you to answer"
         stream = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
